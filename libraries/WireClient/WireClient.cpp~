@@ -1,0 +1,80 @@
+#include "Arduino.h"
+#include "WireClient.h"
+#include <Wire.h>
+
+WireClient::ClientState WireClient::State = WireClient::ClearToSend;
+void (*WireClient::user_onReceive)(void *, int) = NULL;
+char WireClient::Buffer[255];
+
+WireClient::WireClient(int Address)
+{
+    this->Address = Address;
+    this->MaxReplyWait = 5000;
+    //user_onReceive = NULL;
+}
+
+WireClient::WireClient(int Address, void (*user_func)(void *, int))
+{
+    this->Address = Address;
+    user_onReceive = user_func;
+    this->MaxReplyWait = 5000;
+}
+
+int WireClient::IsClearToSend()
+{
+    return (State == WireClient::ClearToSend);
+}
+
+void WireClient::Run()
+{
+    if (State == WireClient::WaitingForReply)
+    {
+        if (millis() - this->ReplyStart > this->MaxReplyWait)
+        {
+            Serial.println("Resending request");
+            State = WireClient::ClearToSend;
+            this->Send(this->ReqBuffer, ReqLength);
+        }
+    }
+}
+
+void WireClient::Send(uint8_t *Ptr, int Len)
+{
+    if (State == WireClient::ClearToSend)
+    {
+        memcpy(ReqBuffer, Ptr, Len);
+        ReqLength = Len;
+        Wire.begin();
+        Wire.beginTransmission(this->Address);
+        Wire.write(Ptr, Len);
+        Wire.endTransmission(true);
+        
+        if (user_onReceive != NULL)
+        {
+            State = WireClient::WaitingForReply;
+            Wire.begin(this->Address);
+            Wire.onReceive(OnWireReceive);
+            //Serial.println("Waiting for reply");
+        }
+    }
+   
+}
+
+void WireClient::OnWireReceive(int Length)
+{
+    //Serial.println("Got Reply");
+    int Cnt = 0;
+      while (Cnt < Length)
+      {
+        if (Wire.available())
+        {
+          Buffer[Cnt] = Wire.read();
+          Cnt++;
+        }
+      }
+    user_onReceive((void *)Buffer, Length);
+    State = WireClient::ClearToSend;
+}
+
+
+

@@ -1,0 +1,68 @@
+#include "Arduino.h"
+#include "LcdField.h"
+
+LcdField::LcdField(LiquidCrystal *lcd, int Row, int Col, char *Label, int ValueLen)
+  {
+    this->lcd = lcd;
+    this->Row = Row;
+    this->Col = Col;
+    strncpy(this->Label, Label, 20);
+    this->Label[20] = 0;
+    this->ValueLen = ValueLen;
+    this->ValuePos = strlen(this->Label);
+    this->RightJustify = false;
+    memset(this->Spaces, ' ', 20);
+  }
+  
+  //----------------------------------------
+  
+  void LcdField::PrintLabel()
+  {
+    this->lcd->setCursor(this->Col, this->Row);
+    this->lcd->print(this->Label);
+  }
+  
+  //----------------------------------------
+  
+  void LcdField::Print(char *Value)
+  {
+    int Len = this->ValueLen - strlen(StrVal);
+	 this->PrintLabel();
+    this->lcd->setCursor(this->Col + this->ValuePos, this->Row);
+    
+    if (Len > 0 && RightJustify)
+    {
+      while (Len > 0)
+      {
+        this->lcd->write(' ');
+        Len--;
+      }
+    }
+    this->lcd->print(Value);
+    if (Len > 0 && !RightJustify)
+    {
+       while (Len > 0)
+      {
+        this->lcd->write(' ');
+        Len--;
+      }
+    }
+  }
+  
+  //----------------------------------------
+
+	void LcdField::Print(String &Str)
+	{
+		this->Print(Str);
+	}
+
+  //----------------------------------------
+  
+  void LcdField::Print(int Value)
+  {
+    itoa(Value, StrVal, 10);
+    this->Print(StrVal);
+  }
+
+
+
